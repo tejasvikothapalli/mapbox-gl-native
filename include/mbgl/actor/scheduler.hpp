@@ -41,6 +41,9 @@ public:
     // Set/Get the current Scheduler for this thread
     static Scheduler* GetCurrent();
     static void SetCurrent(Scheduler*);
+
+    // Get the scheduler for asynchronous tasks
+    static std::shared_ptr<Scheduler> GetBackground();
 };
 
 } // namespace mbgl

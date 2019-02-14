@@ -2,7 +2,6 @@
 #include <mbgl/util/run_loop.hpp>
 #include <mbgl/util/string.hpp>
 #include <mbgl/util/geojson.hpp>
-
 #include <mbgl/storage/default_file_source.hpp>
 
 #include <args.hxx>
