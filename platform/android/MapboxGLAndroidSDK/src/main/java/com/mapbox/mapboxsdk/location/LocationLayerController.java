@@ -48,7 +48,6 @@ import static com.mapbox.mapboxsdk.location.LocationComponentConstants.PROPERTY_
 import static com.mapbox.mapboxsdk.location.LocationComponentConstants.PROPERTY_GPS_BEARING;
 import static com.mapbox.mapboxsdk.location.LocationComponentConstants.PROPERTY_LOCATION_STALE;
 import static com.mapbox.mapboxsdk.location.LocationComponentConstants.PROPERTY_PULSING_CIRCLE_LAYER;
-import static com.mapbox.mapboxsdk.location.LocationComponentConstants.PROPERTY_PULSING_RADIUS;
 import static com.mapbox.mapboxsdk.location.LocationComponentConstants.PROPERTY_SHADOW_ICON_OFFSET;
 import static com.mapbox.mapboxsdk.location.LocationComponentConstants.SHADOW_ICON;
 import static com.mapbox.mapboxsdk.location.LocationComponentConstants.SHADOW_LAYER;
@@ -85,7 +84,6 @@ final class LocationLayerController {
   private GeoJsonSource locationSource;
 
   private boolean isHidden = true;
-  private boolean pulsingCircleIsEnabled;
 
   private LocationComponentPositionManager positionManager;
 
@@ -179,6 +177,7 @@ final class LocationLayerController {
         default:
           break;
       }
+
       determineIconsSource(options);
     }
 
@@ -197,16 +196,12 @@ final class LocationLayerController {
 
   void show() {
     isHidden = false;
-    Logger.d(TAG, "show()");
-//    addPulsingCircleLayerToMap();
     setRenderMode(renderMode);
   }
 
   void hide() {
     isHidden = true;
-    Logger.d(TAG, "hide()");
     for (String layerId : layerSet) {
-      Logger.d(TAG, "layerId = " + layerId);
       setLayerVisibility(layerId, false);
     }
   }
@@ -282,7 +277,6 @@ final class LocationLayerController {
     Logger.d(TAG, "LocationLayerController ----> addPulsingCircleLayerToMap()");
     Layer pulsingCircleLayer = layerSourceProvider.generatePulsingCircleLayer();
     addLayerToMap(pulsingCircleLayer, ACCURACY_LAYER);
-    pulsingCircleIsEnabled = options.pulseEnabled();
   }
 
   private void removeLayers() {
@@ -299,11 +293,6 @@ final class LocationLayerController {
 
   private void updateAccuracyRadius(float accuracy) {
     locationFeature.addNumberProperty(PROPERTY_ACCURACY_RADIUS, accuracy);
-    refreshSource();
-  }
-
-  private void updatePulsingCircleRadius(float radius) {
-    locationFeature.addNumberProperty(PROPERTY_PULSING_RADIUS, radius);
     refreshSource();
   }
 
@@ -491,14 +480,6 @@ final class LocationLayerController {
       }
     };
 
-  private final MapboxAnimator.AnimationsValueChangeListener<Float> pulsingRadiusValueListener =
-    new MapboxAnimator.AnimationsValueChangeListener<Float>() {
-      @Override
-      public void onNewAnimationValue(Float value) {
-        updatePulsingCircleRadius(value);
-      }
-    };
-
   Set<AnimatorListenerHolder> getAnimationListeners() {
     Set<AnimatorListenerHolder> holders = new HashSet<>();
     holders.add(new AnimatorListenerHolder(MapboxAnimator.ANIMATOR_LAYER_LATLNG, latLngValueListener));
@@ -512,10 +493,6 @@ final class LocationLayerController {
 
     if (renderMode == RenderMode.COMPASS || renderMode == RenderMode.NORMAL) {
       holders.add(new AnimatorListenerHolder(MapboxAnimator.ANIMATOR_LAYER_ACCURACY, accuracyValueListener));
-    }
-
-    if (pulsingCircleIsEnabled) {
-      holders.add(new AnimatorListenerHolder(MapboxAnimator.ANIMATOR_PULSING_CIRCLE_RADIUS, pulsingRadiusValueListener));
     }
 
     return holders;

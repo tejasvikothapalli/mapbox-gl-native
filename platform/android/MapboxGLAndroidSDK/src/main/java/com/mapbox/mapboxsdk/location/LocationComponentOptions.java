@@ -1292,6 +1292,7 @@ public class LocationComponentOptions implements Parcelable {
           + locationComponentOptions.elevation() + ". Must be >= 0");
       }
 
+<<<<<<< HEAD
       if (locationComponentOptions.layerAbove() != null && locationComponentOptions.layerBelow() != null) {
         throw new IllegalArgumentException("You cannot set both layerAbove and layerBelow options."
           + "Choose one or the other.");
@@ -1309,6 +1310,36 @@ public class LocationComponentOptions implements Parcelable {
           "of a single pulse.");
       }*/
 
+=======
+      if (locationComponentOptions.pulseEnabled() == null) {
+
+        Log.d("LCOptions", "autoBuild: this.pulsingCircleFadeEnabled == null ");
+
+        String pulsingSetupError = "";
+
+        if (locationComponentOptions.pulsingCircleFadeEnabled() != null) {
+          pulsingSetupError += " pulsingCircleFadeEnabled";
+        }
+        if (locationComponentOptions.pulseColor() != null) {
+          pulsingSetupError += " pulsingCircleColor";
+        }
+        if ((Float) locationComponentOptions.pulseSingleDuration() == null) {
+
+          pulsingSetupError += " pulsingCircleDuration";
+        }
+        if (locationComponentOptions.pulseAlpha() != null) {
+          pulsingSetupError += " accuracyAlpha";
+        }
+        if (locationComponentOptions.pulseInterpolator() != null) {
+          pulsingSetupError += " pulsingCircleInterpolator";
+        }
+        if (!pulsingSetupError.isEmpty()) {
+          throw new IllegalStateException("You've set up the following pulsing circle options but have not enabled" +
+            " the pulsing circle via the LocationComponentOptions builder:" + pulsingSetupError + ". Enable the pulsing" +
+            " circle if you're going to set pulsing options.");
+        }
+      }
+>>>>>>> 15f8bf2ac... more adjustments on Lukasz feedback
       return locationComponentOptions;
     }
 
