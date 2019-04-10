@@ -185,11 +185,6 @@ const CGFloat MGLSnapshotterMinimumPixelSize = 64;
 
 - (void)startWithQueue:(dispatch_queue_t)queue completionHandler:(MGLMapSnapshotCompletionHandler)completion
 {
-    if (!mbgl::Scheduler::GetCurrent()) {
-        [NSException raise:NSInvalidArgumentException
-                    format:@"startWithQueue:completionHandler: must be called from a thread with an active run loop."];
-    }
-
     if (self.completion) {
         // Consider replacing this exception with an error passed to the completion block.
         [NSException raise:NSInternalInconsistencyException
@@ -210,7 +205,7 @@ const CGFloat MGLSnapshotterMinimumPixelSize = 64;
     // capture weakSelf to avoid retain cycle if callback is never called (ie snapshot cancelled)
 
     _snapshotCallback = std::make_unique<mbgl::Actor<mbgl::MapSnapshotter::Callback>>(
-							*mbgl::Scheduler::GetCurrent(),
+							mbgl::Scheduler::GetCurrent(),
 							[=](std::exception_ptr mbglError, mbgl::PremultipliedImage image, mbgl::MapSnapshotter::Attributions attributions, mbgl::MapSnapshotter::PointForFn pointForFn, mbgl::MapSnapshotter::LatLngForFn latLngForFn) {
 
         __typeof__(self) strongSelf = weakSelf;

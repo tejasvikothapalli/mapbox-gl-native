@@ -58,7 +58,7 @@ TEST(CustomGeometryTile, InvokeFetchTile) {
     }, [&](const CanonicalTileID&) {
 
     });
-    auto mb =std::make_shared<Mailbox>(*Scheduler::GetCurrent());
+    auto mb = std::make_shared<Mailbox>(Scheduler::GetCurrent());
     ActorRef<CustomTileLoader> loaderActor(loader, mb);
 
     CustomGeometryTile tile(OverscaledTileID(0, 0, 0), "source", test.tileParameters, CustomGeometrySource::TileOptions(),
@@ -83,7 +83,7 @@ TEST(CustomGeometryTile, InvokeCancelTile) {
         EXPECT_EQ(tileId, CanonicalTileID(0,0,0));
         test.loop.stop();
     });
-    auto mb =std::make_shared<Mailbox>(*Scheduler::GetCurrent());
+    auto mb = std::make_shared<Mailbox>(Scheduler::GetCurrent());
     ActorRef<CustomTileLoader> loaderActor(loader, mb);
 
     CustomGeometryTile tile(OverscaledTileID(0, 0, 0), "source", test.tileParameters, CustomGeometrySource::TileOptions(),
@@ -105,7 +105,7 @@ TEST(CustomGeometryTile, InvokeTileChanged) {
     });
 
     CustomTileLoader loader(nullptr, nullptr);
-    auto mb =std::make_shared<Mailbox>(*Scheduler::GetCurrent());
+    auto mb = std::make_shared<Mailbox>(Scheduler::GetCurrent());
     ActorRef<CustomTileLoader> loaderActor(loader, mb);
 
     CustomGeometryTile tile(OverscaledTileID(0, 0, 0), "source", test.tileParameters, CustomGeometrySource::TileOptions(),

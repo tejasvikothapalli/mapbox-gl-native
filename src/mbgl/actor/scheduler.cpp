@@ -2,21 +2,17 @@
 #include <mbgl/util/thread_local.hpp>
 #include <mbgl/util/thread_pool.hpp>
 
+#include <cassert>
+
 namespace mbgl {
 
 util::ThreadLocal<Scheduler> g_currentScheduler;
 
-static auto& current() {
-    static util::ThreadLocal<Scheduler> scheduler;
-    return scheduler;
-};
+// static
+Scheduler& Scheduler::GetCurrent() {
+    assert(g_currentScheduler.get());
 
-void Scheduler::SetCurrent(Scheduler* scheduler) {
-    current().set(scheduler);
-}
-
-Scheduler* Scheduler::GetCurrent() {
-    return current().get();
+    return *(g_currentScheduler.get());
 }
 
 // static
