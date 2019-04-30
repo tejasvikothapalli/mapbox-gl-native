@@ -253,7 +253,9 @@ void DefaultFileSource::setResourceTransform(optional<ActorRef<ResourceTransform
 }
 
 void DefaultFileSource::setResourceCachePath(const std::string& path) {
-    impl->actor().invoke(&Impl::setResourceCachePath, path);
+    // executed synchronously to switch the responsibility of verifying the path to the caller
+    // once the file source is resumed
+    impl->actor().ask(&Impl::setResourceCachePath, path).get();
 }
 
 std::unique_ptr<AsyncRequest> DefaultFileSource::request(const Resource& resource, Callback callback) {
