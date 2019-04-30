@@ -1,5 +1,6 @@
 package com.mapbox.mapboxsdk.storage;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
@@ -11,6 +12,7 @@ import android.support.annotation.Keep;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.UiThread;
+import android.support.annotation.WorkerThread;
 
 import com.mapbox.mapboxsdk.MapStrictMode;
 import com.mapbox.mapboxsdk.Mapbox;
@@ -21,6 +23,7 @@ import com.mapbox.mapboxsdk.utils.ThreadUtils;
 
 import java.io.File;
 import java.lang.ref.WeakReference;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -305,33 +308,91 @@ public class FileSource {
             Logger.w(TAG, fileSourceActivatedMessage);
             callback.onError(fileSourceActivatedMessage);
           } else {
-            final SharedPreferences.Editor editor =
-              context.getSharedPreferences(MapboxConstants.MAPBOX_SHARED_PREFERENCES, Context.MODE_PRIVATE).edit();
-            editor.putString(MAPBOX_SHARED_PREFERENCE_RESOURCES_CACHE_PATH, path);
-            editor.apply();
-            setResourcesCachePath(context, path);
-            callback.onSuccess(path);
+            new SetResourcesCachePathTask(context, callback).execute(path);
           }
         }
 
         @Override
         public void onError() {
           final ResourcesCachePathChangeCallback callback = callbackWeakReference.get();
-          if (callback != null) {
-            String message = "Path is not writable: " + path;
-            Logger.e(TAG, message);
-            callback.onError(message);
+          if (callback == null) {
+            Logger.w(TAG, "Lost callback reference.");
+            return;
           }
+
+          String message = "Path is not writable: " + path;
+          Logger.e(TAG, message);
+          callback.onError(message);
         }
       }).execute(new File(path));
     }
   }
 
-  private static void setResourcesCachePath(@NonNull Context context, @NonNull String path) {
+  private static class SetResourcesCachePathTask extends AsyncTask<String, Void, String> {
+
+    private final WeakReference<Context> contextWeakReference;
+    private final WeakReference<ResourcesCachePathChangeCallback> callbackWeakReference;
+    private final FileSource fileSource;
+    private final AtomicBoolean result = new AtomicBoolean();
+
+    SetResourcesCachePathTask(Context context, ResourcesCachePathChangeCallback callback) {
+      this.fileSource = FileSource.getInstance(context);
+      this.contextWeakReference = new WeakReference<>(context);
+      this.callbackWeakReference = new WeakReference<>(callback);
+    }
+
+    @Override
+    protected void onPreExecute() {
+      fileSource.activate();
+    }
+
+    @Override
+    protected String doInBackground(String... strings) {
+      Context context = contextWeakReference.get();
+      if (context == null) {
+        String lostContextMessage = "Lost context reference.";
+        Logger.w(TAG, lostContextMessage);
+        result.set(false);
+        return lostContextMessage;
+      }
+
+      String path = strings[0];
+      setResourcesCachePath(context, fileSource, path);
+      result.set(true);
+      return path;
+    }
+
+    @Override
+    protected void onPostExecute(String message) {
+      fileSource.deactivate();
+
+      ResourcesCachePathChangeCallback callback = callbackWeakReference.get();
+      if (callback == null) {
+        Logger.w(TAG, "Lost callback reference.");
+        return;
+      }
+
+      if (result.get()) {
+        callback.onSuccess(message);
+      } else {
+        Logger.e(TAG, message);
+        callback.onError(message);
+      }
+    }
+  }
+
+  @SuppressLint("ApplySharedPref")
+  @WorkerThread
+  private static void setResourcesCachePath(@NonNull Context context, @NonNull FileSource fileSource,
+                                            @NonNull String path) {
     resourcesCachePathLoaderLock.lock();
     resourcesCachePath = path;
+    fileSource.setResourceCachePath(path);
+    SharedPreferences.Editor editor =
+      context.getSharedPreferences(MapboxConstants.MAPBOX_SHARED_PREFERENCES, Context.MODE_PRIVATE).edit();
+    editor.putString(MAPBOX_SHARED_PREFERENCE_RESOURCES_CACHE_PATH, path);
+    editor.commit();
     resourcesCachePathLoaderLock.unlock();
-    getInstance(context).setResourceCachePath(path);
   }
 
   private static boolean isPathWritable(String path) {

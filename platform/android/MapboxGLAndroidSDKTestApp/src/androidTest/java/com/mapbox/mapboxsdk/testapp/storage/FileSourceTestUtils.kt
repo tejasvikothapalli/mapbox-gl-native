@@ -36,7 +36,8 @@ class FileSourceTestUtils(private val activity: Activity) {
         activity,
         path,
         object : FileSource.ResourcesCachePathChangeCallback {
-          override fun onSuccess(path: String?) {
+          override fun onSuccess(result: String?) {
+            Assert.assertEquals(path, result)
             latch.countDown()
           }
 
