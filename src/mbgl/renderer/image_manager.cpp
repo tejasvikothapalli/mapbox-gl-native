@@ -1,4 +1,5 @@
 #include <mbgl/renderer/image_manager.hpp>
+#include <mbgl/util/constants.hpp>
 #include <mbgl/util/logging.hpp>
 #include <mbgl/gfx/context.hpp>
 #include <mbgl/renderer/image_manager_observer.hpp>
@@ -32,6 +33,10 @@ bool ImageManager::isLoaded() const {
 
 void ImageManager::addImage(Immutable<style::Image::Impl> image_) {
     assert(images.find(image_->id) == images.end());
+    // Increase cache size if requested image was provided.
+    if (requestedImages.find(image_->id) != requestedImages.end()) {
+        requestedImagesCacheSize += image_->image.bytes();
+    }
     images.emplace(image_->id, std::move(image_));
 }
 
@@ -43,6 +48,10 @@ bool ImageManager::updateImage(Immutable<style::Image::Impl> image_) {
     auto sizeChanged = oldImage->second->image.size != image_->image.size;
 
     if (sizeChanged) {
+        // Update cache size if requested image size has changed.
+        if (requestedImages.find(image_->id) != requestedImages.end()) {
+            requestedImagesCacheSize += image_->image.bytes() - oldImage->second->image.bytes();
+        }
         updatedImageVersions.erase(image_->id);
     } else {
         updatedImageVersions[image_->id]++;
@@ -55,9 +64,15 @@ bool ImageManager::updateImage(Immutable<style::Image::Impl> image_) {
 }
 
 void ImageManager::removeImage(const std::string& id) {
-    assert(images.find(id) != images.end());
-    images.erase(id);
-    requestedImages.erase(id);
+    auto it = images.find(id);
+    assert(it != images.end());
+    // Reduce cache size for requested images.
+    auto requestedIt = requestedImages.find(it->second->id);
+    if (requestedIt != requestedImages.end()) {
+        requestedImagesCacheSize -= it->second->image.bytes();
+        requestedImages.erase(requestedIt);
+    }
+    images.erase(it);
     removePattern(id);
 }
 
@@ -99,12 +114,7 @@ void ImageManager::getImages(ImageRequestor& requestor, ImageRequestPair&& pair)
         for (const auto& dependency : pair.first) {
             if (images.find(dependency.first) == images.end()) {
                 hasAllDependencies = false;
-            } else {
-                // Associate requestor with an image that was provided by the client.
-                auto it = requestedImages.find(dependency.first);
-                if (it != requestedImages.end()) {
-                    it->second.emplace(&requestor);
-                }
+                break;
             }
         }
 
@@ -137,48 +147,57 @@ void ImageManager::notifyIfMissingImageAdded() {
     }
 }
 
-void ImageManager::reduceMemoryUse() {
-    for (auto it = requestedImages.cbegin(); it != requestedImages.cend();) {
-        if (it->second.empty() && images.find(it->first) != images.end()) {
-            images.erase(it->first);
-            removePattern(it->first);
-            it = requestedImages.erase(it);
-        } else {
-            ++it;
+void ImageManager::reduceMemoryUse() const {
+    std::vector<std::string> unusedIDs;
+    unusedIDs.reserve(requestedImages.size());
+
+    for (const auto& kv : requestedImages) {
+        if (kv.second.empty() && images.find(kv.first) != images.end()) {
+            unusedIDs.push_back(kv.first);
         }
+    }
+
+    if (!unusedIDs.empty()) {
+        observer->onRemoveUnusedStyleImages(std::move(unusedIDs));
+    }
+}
+
+void ImageManager::checkCacheSizeReduceMemoryUse() const {
+    if (requestedImagesCacheSize > util::DEFAULT_ON_DEMAND_IMAGES_CACHE_SIZE) {
+        reduceMemoryUse();
     }
 }
 
 void ImageManager::checkMissingAndNotify(ImageRequestor& requestor, const ImageRequestPair& pair) {
-    unsigned int missing = 0;
+    std::vector<std::string> missingImages;
+    missingImages.reserve(pair.first.size());
     for (const auto& dependency : pair.first) {
-        auto it = images.find(dependency.first);
-        if (it == images.end()) {
-            missing++;
-            requestedImages[dependency.first].emplace(&requestor);
+        if (images.find(dependency.first) == images.end()) {
+            missingImages.push_back(dependency.first);
         }
     }
 
-    if (missing > 0) {
+    if (!missingImages.empty()) {
         ImageRequestor* requestorPtr = &requestor;
-
-        missingImageRequestors.emplace(requestorPtr, MissingImageRequestPair { std::move(pair), missing });
-
+        missingImageRequestors.emplace(requestorPtr, MissingImageRequestPair { pair, missingImages.size() });
+        for (const auto& missingImage : missingImages) {
+            assert(observer != nullptr);
+            requestedImages[missingImage].emplace(&requestor);
+            observer->onStyleImageMissing(missingImage, [this, requestorPtr]() {
+                auto requestorIt = missingImageRequestors.find(requestorPtr);
+                if (requestorIt != missingImageRequestors.end()) {
+                    assert(requestorIt->second.callbacksRemaining > 0);
+                    requestorIt->second.callbacksRemaining--;
+                }
+            });
+        }
+    } else {
+        // Associate requestor with an image that was provided by the client.
         for (const auto& dependency : pair.first) {
-            auto it = images.find(dependency.first);
-            if (it == images.end()) {
-                assert(observer != nullptr);
-                observer->onStyleImageMissing(dependency.first, [this, requestorPtr]() {
-                    auto requestorIt = missingImageRequestors.find(requestorPtr);
-                    if (requestorIt != missingImageRequestors.end()) {
-                        assert(requestorIt->second.callbacksRemaining > 0);
-                        requestorIt->second.callbacksRemaining--;
-                    }
-                });
+            if (requestedImages.find(dependency.first) != requestedImages.end()) {
+                requestedImages[dependency.first].emplace(&requestor);
             }
         }
-
-    } else {
         notify(requestor, pair);
     }
 }
