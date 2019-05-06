@@ -48,6 +48,7 @@ public:
     virtual void onSourceChanged(style::Source&) {}
     virtual void onDidBecomeIdle() {}
     virtual void onStyleImageMissing(const std::string&) {}
+    virtual void onRemoveUnusedStyleImages(std::vector<std::string>) {}
 };
 
 } // namespace mbgl

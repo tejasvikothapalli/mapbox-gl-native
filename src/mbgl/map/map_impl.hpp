@@ -48,6 +48,7 @@ public:
     void onWillStartRenderingMap() final;
     void onDidFinishRenderingMap() final;
     void onStyleImageMissing(const std::string&, std::function<void()>) final;
+    void onRemoveUnusedStyleImages(std::vector<std::string>) final;
 
     // Map
     void jumpTo(const CameraOptions&);

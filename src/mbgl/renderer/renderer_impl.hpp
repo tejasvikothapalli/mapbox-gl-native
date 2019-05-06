@@ -93,6 +93,7 @@ private:
 
     // ImageManagerObserver implementation
     void onStyleImageMissing(const std::string&, std::function<void()>) override;
+    void onRemoveUnusedStyleImages(std::vector<std::string>) final;
 
     void updateFadingTiles();
 
