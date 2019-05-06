@@ -1052,6 +1052,14 @@ final class NativeMapView implements NativeMap {
   }
 
   @Keep
+  private void onRemoveUnusedStyleImages(String[] unusedImageIds) {
+    Logger.e(TAG, "OnRemoveUnusedStyleImages");
+    if (stateCallback != null) {
+      stateCallback.onRemoveUnusedStyleImages(unusedImageIds);
+    }
+  }
+
+  @Keep
   protected void onSnapshotReady(@Nullable Bitmap mapContent) {
     if (checkState("OnSnapshotReady")) {
       return;
@@ -1458,5 +1466,7 @@ final class NativeMapView implements NativeMap {
     void onSourceChanged(String sourceId);
 
     void onStyleImageMissing(String imageId);
+
+    void onRemoveUnusedStyleImages(String[] unusedImageIds);
   }
 }

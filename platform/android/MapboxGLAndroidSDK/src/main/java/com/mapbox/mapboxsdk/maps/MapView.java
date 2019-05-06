@@ -798,6 +798,24 @@ public class MapView extends FrameLayout implements NativeMapView.ViewCallback {
   }
 
   /**
+   * Set a callback that's invoked when map needs to release unused image resources.
+   *
+   * @param listener The callback that's invoked when map needs to release unused image resources
+   */
+  public void addOnRemoveUnusedStyleImagesListener(@NonNull OnRemoveUnusedStyleImagesListener listener) {
+    mapChangeReceiver.addOnRemoveUnusedStyleImagesListener(listener);
+  }
+
+  /**
+   * Removes a callback that's invoked when map needs to release unused image resources.
+   *
+   * @param listener The callback that's invoked when map needs to release unused image resources
+   */
+  public void removeOnRemoveUnusedStyleImagesListener(@NonNull OnRemoveUnusedStyleImagesListener listener) {
+    mapChangeReceiver.removeOnRemoveUnusedStyleImagesListener(listener);
+  }
+
+  /**
    * Interface definition for a callback to be invoked when the camera will change.
    * <p>
    * {@link MapView#addOnCameraWillChangeListener(OnCameraWillChangeListener)}
@@ -988,6 +1006,21 @@ public class MapView extends FrameLayout implements NativeMapView.ViewCallback {
      * @param id the id of the icon that is missing
      */
     void onStyleImageMissing(@NonNull String id);
+  }
+
+  /**
+   * Interface definition for a callback to be invoked with a list of unused image identifiers.
+   * <p>
+   * {@link MapView#addOnRemoveUnusedStyleImagesListener(OnRemoveUnusedStyleImagesListener)}
+   * </p>
+   */
+  public interface OnRemoveUnusedStyleImagesListener {
+    /**
+     * Called when the map needs to release unused image resources.
+     *
+     * @param ids list of image identifiers that are not used by the map and can be removed from the style.
+     */
+    void onRemoveUnusedStyleImages(@NonNull String[] ids);
   }
 
   /**

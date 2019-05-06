@@ -33,6 +33,8 @@ class MapChangeReceiver implements NativeMapView.StateCallback {
   private final List<MapView.OnSourceChangedListener> onSourceChangedListenerList = new CopyOnWriteArrayList<>();
   private final List<MapView.OnStyleImageMissingListener> onStyleImageMissingListenerList
     = new CopyOnWriteArrayList<>();
+  private final List<MapView.OnRemoveUnusedStyleImagesListener> onRemoveUnusedStyleImagesListenerList
+    = new CopyOnWriteArrayList<>();
 
   @Override
   public void onCameraWillChange(boolean animated) {
@@ -230,6 +232,20 @@ class MapChangeReceiver implements NativeMapView.StateCallback {
     }
   }
 
+  @Override
+  public void onRemoveUnusedStyleImages(String[] unusedImageIds) {
+    try {
+      if (!onRemoveUnusedStyleImagesListenerList.isEmpty()) {
+        for (MapView.OnRemoveUnusedStyleImagesListener listener : onRemoveUnusedStyleImagesListenerList) {
+          listener.onRemoveUnusedStyleImages(unusedImageIds);
+        }
+      }
+    } catch (Throwable err) {
+      Logger.e(TAG, "Exception in onRemoveUnusedStyleImages", err);
+      throw err;
+    }
+  }
+
   void addOnCameraWillChangeListener(MapView.OnCameraWillChangeListener listener) {
     onCameraWillChangeListenerList.add(listener);
   }
@@ -342,6 +358,14 @@ class MapChangeReceiver implements NativeMapView.StateCallback {
     onStyleImageMissingListenerList.remove(listener);
   }
 
+  void addOnRemoveUnusedStyleImagesListener(MapView.OnRemoveUnusedStyleImagesListener listener) {
+    onRemoveUnusedStyleImagesListenerList.add(listener);
+  }
+
+  void removeOnRemoveUnusedStyleImagesListener(MapView.OnRemoveUnusedStyleImagesListener listener) {
+    onRemoveUnusedStyleImagesListenerList.remove(listener);
+  }
+
   void clear() {
     onCameraWillChangeListenerList.clear();
     onCameraIsChangingListenerList.clear();
@@ -357,5 +381,6 @@ class MapChangeReceiver implements NativeMapView.StateCallback {
     onDidFinishLoadingStyleListenerList.clear();
     onSourceChangedListenerList.clear();
     onStyleImageMissingListenerList.clear();
+    onRemoveUnusedStyleImagesListenerList.clear();
   }
 }
