@@ -85,6 +85,7 @@ public class MapView extends FrameLayout implements NativeMapView.ViewCallback {
   @Nullable
   private Bundle savedInstanceState;
   private boolean isStarted;
+  private OnRemoveUnusedStyleImagesListener defaultOnRemoveUnusedStyleImagesListener = null;
 
   @UiThread
   public MapView(@NonNull Context context) {
@@ -203,6 +204,8 @@ public class MapView extends FrameLayout implements NativeMapView.ViewCallback {
     } else {
       mapboxMap.onRestoreInstanceState(savedInstanceState);
     }
+
+    addDefaultRemoveUnusedStyleImagesListener();
 
     mapCallback.initialised();
   }
@@ -804,6 +807,7 @@ public class MapView extends FrameLayout implements NativeMapView.ViewCallback {
    */
   public void addOnRemoveUnusedStyleImagesListener(@NonNull OnRemoveUnusedStyleImagesListener listener) {
     mapChangeReceiver.addOnRemoveUnusedStyleImagesListener(listener);
+    removeDefaultRemoveUnusedStyleImagesListener();
   }
 
   /**
@@ -812,7 +816,31 @@ public class MapView extends FrameLayout implements NativeMapView.ViewCallback {
    * @param listener The callback that's invoked when map needs to release unused image resources
    */
   public void removeOnRemoveUnusedStyleImagesListener(@NonNull OnRemoveUnusedStyleImagesListener listener) {
-    mapChangeReceiver.removeOnRemoveUnusedStyleImagesListener(listener);
+    boolean lastListenerRemoved = mapChangeReceiver.removeOnRemoveUnusedStyleImagesListener(listener);
+    if (lastListenerRemoved) {
+      addDefaultRemoveUnusedStyleImagesListener();
+    }
+  }
+
+  private void addDefaultRemoveUnusedStyleImagesListener() {
+    if (defaultOnRemoveUnusedStyleImagesListener == null) {
+      // Initialize default callback for OnRemoveUnusedStyleImages notifications.
+      defaultOnRemoveUnusedStyleImagesListener = new OnRemoveUnusedStyleImagesListener() {
+        @Override
+        public void onRemoveUnusedStyleImages(@NonNull String[] ids) {
+          if (mapboxMap != null && mapboxMap.getStyle() != null) {
+            for (String id : ids) {
+              mapboxMap.getStyle().removeImage(id);
+            }
+          }
+        }
+      };
+    }
+    mapChangeReceiver.addOnRemoveUnusedStyleImagesListener(defaultOnRemoveUnusedStyleImagesListener);
+  }
+
+  private void removeDefaultRemoveUnusedStyleImagesListener() {
+    mapChangeReceiver.removeOnRemoveUnusedStyleImagesListener(defaultOnRemoveUnusedStyleImagesListener);
   }
 
   /**
