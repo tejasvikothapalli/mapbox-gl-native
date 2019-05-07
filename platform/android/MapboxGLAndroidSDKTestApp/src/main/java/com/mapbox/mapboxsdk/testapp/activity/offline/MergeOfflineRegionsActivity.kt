@@ -12,6 +12,7 @@ import com.mapbox.mapboxsdk.storage.FileSource
 import com.mapbox.mapboxsdk.testapp.R
 import com.mapbox.mapboxsdk.testapp.utils.FileUtils
 import kotlinx.android.synthetic.main.activity_merge_offline_regions.*
+import java.lang.ref.WeakReference
 
 class MergeOfflineRegionsActivity : AppCompatActivity() {
   companion object {
@@ -24,7 +25,7 @@ class MergeOfflineRegionsActivity : AppCompatActivity() {
     override fun onFileCopiedFromAssets() {
       Toast.makeText(
         this@MergeOfflineRegionsActivity,
-        String.format("OnFileCOpied."),
+        String.format("OnFileCopied."),
         Toast.LENGTH_LONG).show()
       mergeDb()
     }
@@ -57,6 +58,23 @@ class MergeOfflineRegionsActivity : AppCompatActivity() {
     }
   }
 
+  /**
+   * Since we expect from the results of the offline merge callback to interact with the hosting activity,
+   * we need to ensure that we are not interacting with a destroyed activity.
+   */
+  private class MergeCallback(activityCallback: OfflineManager.MergeOfflineRegionsCallback) : OfflineManager.MergeOfflineRegionsCallback {
+
+    private val activityWeakReference = WeakReference<OfflineManager.MergeOfflineRegionsCallback>(activityCallback)
+
+    override fun onMerge(offlineRegions: Array<out OfflineRegion>?) {
+      activityWeakReference.get()?.onMerge(offlineRegions)
+    }
+
+    override fun onError(error: String?) {
+      activityWeakReference.get()?.onError(error)
+    }
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     setContentView(R.layout.activity_merge_offline_regions)
@@ -81,7 +99,7 @@ class MergeOfflineRegionsActivity : AppCompatActivity() {
 
   private fun mergeDb() {
     OfflineManager.getInstance(this).mergeOfflineRegions(
-      FileSource.getResourcesCachePath(this) + "/" + TEST_DB_FILE_NAME, onRegionMergedListener
+      FileSource.getResourcesCachePath(this) + "/" + TEST_DB_FILE_NAME, MergeCallback(onRegionMergedListener)
     )
   }
 
